@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --color-paper-50: #faf8f5;
+  --color-paper-100: #f5f2eb;
+  --color-paper-200: #eae5da;
+  --color-paper-300: #ddd6c8;
+  --color-pine-900: #142823;
+  --color-pine-800: #1b3831;
+  --color-pine-700: #244b42;
+  --color-pine-600: #2f6055;
+  --color-sage-100: #eaf1ed;
+  --color-sage-200: #d4e4dc;
+  --color-terracotta: #b4532b;
+}
+
+body {
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--color-paper-50);
+  color: #1a2522;
+  margin: 0;
+  padding: 0;
+  touch-action: manipulation;
+}
+
+/* Custom serene scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8d3c7;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b5ad9e;
+}
+
+/* Media Query Responsive Adjustments */
+
+/* Mobile Phones (max-width: 640px) */
+@media screen and (max-width: 640px) {
+  .mobile-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .mobile-full-dialog {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  .mobile-bottom-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}
+
+/* Tablets (min-width: 641px) and (max-width: 1024px) */
+@media screen and (min-width: 641px) and (max-width: 1024px) {
+  .tablet-split-panel {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tablet-comfortable-touch {
+    min-height: 42px;
+  }
+}
+
+/* Desktop (min-width: 1025px) */
+@media screen and (min-width: 1025px) {
+  .desktop-side-by-side {
+    display: grid;
+    grid-template-columns: minmax(420px, 1fr) minmax(480px, 1.15fr);
+  }
+}

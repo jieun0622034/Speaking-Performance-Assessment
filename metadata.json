@@ -1,0 +1,6 @@
+{
+  "name": "수행평가 AI 채점 도우미",
+  "description": "말하기와 쓰기 수행평가를 위한 AI 초안 생성 및 교사 승인 기반의 스마트 채점 도우미",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

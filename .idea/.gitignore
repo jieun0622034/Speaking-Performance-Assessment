@@ -1,0 +1,10 @@
+# 디폴트 무시된 파일
+/../../수행평가-ai-채점-도우미/.idea/shelf/
+/../../수행평가-ai-채점-도우미/.idea/workspace.xml
+# 쿼리 파일을 포함한 무시된 디폴트 폴더
+/../../수행평가-ai-채점-도우미/.idea/queries/
+# Datasource local storage ignored files
+/../../수행평가-ai-채점-도우미/.idea/dataSources/
+/../../수행평가-ai-채점-도우미/.idea/dataSources.local.xml
+# 에디터 기반 HTTP 클라이언트 요청
+/../../수행평가-ai-채점-도우미/.idea/httpRequests/
