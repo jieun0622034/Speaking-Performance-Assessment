@@ -1,0 +1,2 @@
+-- Initial Flyway baseline. Business tables will be added after the ERD is agreed.
+-- Do not edit applied migrations; create V2__...sql for the next schema change.

@@ -59,6 +59,7 @@ export const RubricGradingPanel: React.FC<RubricGradingPanelProps> = ({
   // School record (세특) state
   const [recordLength, setRecordLength] = useState(300);
   const [isGeneratingRecord, setIsGeneratingRecord] = useState(false);
+  const [recordError, setRecordError] = useState('');
   const [schoolRecordText, setSchoolRecordText] = useState(grading.schoolRecordDraft || '');
   const [copiedRecord, setCopiedRecord] = useState(false);
 
@@ -143,6 +144,7 @@ export const RubricGradingPanel: React.FC<RubricGradingPanelProps> = ({
   // Generate School Record (세특) draft
   const handleGenerateSchoolRecord = async () => {
     setIsGeneratingRecord(true);
+    setRecordError('');
     try {
       let contentSummary = '';
       if (grading.transcriptSentences && grading.transcriptSentences.length > 0) {
@@ -170,6 +172,7 @@ export const RubricGradingPanel: React.FC<RubricGradingPanelProps> = ({
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '세특 생성 요청에 실패했습니다.');
       if (data.draft) {
         setSchoolRecordText(data.draft);
         const updated: Grading = {
@@ -179,7 +182,7 @@ export const RubricGradingPanel: React.FC<RubricGradingPanelProps> = ({
         onUpdateGrading(updated);
       }
     } catch (e) {
-      console.error('Failed to generate record draft', e);
+      setRecordError(e instanceof Error ? e.message : '세특 초안 생성에 실패했습니다.');
     } finally {
       setIsGeneratingRecord(false);
     }
@@ -385,6 +388,7 @@ export const RubricGradingPanel: React.FC<RubricGradingPanelProps> = ({
                 </button>
               </div>
 
+              {recordError && <p role="alert" className="text-xs text-red-700">{recordError}</p>}
               <div className="relative">
                 <textarea
                   rows={5}
