@@ -23,7 +23,7 @@ export default function Review({
   take: Take;
   course?: Course;
   back: () => void;
-  onSave: (t: Take) => void;
+  onSave: (t: Take) => Promise<void>;
   toast: (s: string) => void;
 }) {
   const [tab, setTab] = useState("transcript"),
@@ -37,7 +37,8 @@ export default function Review({
     [checked, setChecked] = useState(false),
     [source, setSource] = useState(""),
     [error, setError] = useState(""),
-    [confirm, setConfirm] = useState(false);
+    [confirm, setConfirm] = useState(false),
+    [saving, setSaving] = useState(false);
   const player = useRef<HTMLMediaElement | null>(null);
   const blob = useRef<Blob | null>(null);
   useEffect(() => {
@@ -58,7 +59,8 @@ export default function Review({
       if (url) URL.revokeObjectURL(url);
     };
   }, [take.id]);
-  function save(confirmed: boolean) {
+  async function save(confirmed: boolean) {
+    if (saving) return;
     setError("");
     const result: Record<string, number> = {};
     for (const c of take.criteria) {
@@ -82,11 +84,19 @@ export default function Review({
       setConfirm(true);
       return;
     }
-    onSave({ ...take, scores: result, feedback, confirmed });
-    setConfirm(false);
-    toast(
-      confirmed ? "교사 최종 점수를 확정했어요." : "검토 내용을 저장했어요.",
-    );
+    setSaving(true);
+    try {
+      await onSave({ ...take, scores: result, feedback, confirmed });
+      setConfirm(false);
+      toast(
+        confirmed ? "교사 최종 점수를 확정했어요." : "검토 내용을 저장했어요.",
+      );
+    } catch (e) {
+      setError((e as Error).message);
+      setConfirm(false);
+    } finally {
+      setSaving(false);
+    }
   }
   function seek(time: number) {
     if (player.current) {
@@ -300,7 +310,7 @@ export default function Review({
                   원본을 재생하며 오른쪽에서 직접 채점할 수 있습니다.
                 </p>
                 <span className="status-tag saved">
-                  현재 브라우저에 원본 보관
+                  교사 계정의 서버에 원본 보관
                 </span>
               </div>
             )}
@@ -370,11 +380,19 @@ export default function Review({
               {error}
             </p>
           )}
-          <button className="primary-button full" onClick={() => save(true)}>
+          <button
+            className="primary-button full"
+            disabled={saving}
+            onClick={() => void save(true)}
+          >
             <CheckCheck size={18} />
             최종 점수 확정하기
           </button>
-          <button className="secondary-button full" onClick={() => save(false)}>
+          <button
+            className="secondary-button full"
+            disabled={saving}
+            onClick={() => void save(false)}
+          >
             검토 내용 저장
           </button>
           <p className="grading-footnote">
@@ -425,7 +443,11 @@ export default function Review({
             >
               돌아가기
             </button>
-            <button className="primary-button" onClick={() => save(true)}>
+            <button
+              className="primary-button"
+              disabled={saving}
+              onClick={() => void save(true)}
+            >
               <Check size={17} />
               최종 확정
             </button>

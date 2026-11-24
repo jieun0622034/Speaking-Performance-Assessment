@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { indexedDB } from "fake-indexeddb";
 import {
   initialData,
-  saveMedia,
-  readMedia,
+  saveLegacyMedia as saveMedia,
+  readLegacyMedia as readMedia,
   latestTake,
   total,
   DATA_KEY,

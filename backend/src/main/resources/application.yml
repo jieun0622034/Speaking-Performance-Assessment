@@ -1,6 +1,13 @@
 server:
   address: ${SERVER_ADDRESS:127.0.0.1}
   port: ${BACKEND_PORT:8080}
+  servlet:
+    session:
+      timeout: 12h
+      cookie:
+        http-only: true
+        same-site: strict
+        secure: ${SESSION_COOKIE_SECURE:false}
   error:
     include-stacktrace: never
     include-message: never
@@ -11,8 +18,8 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:local}
   servlet:
     multipart:
-      max-file-size: 25MB
-      max-request-size: 30MB
+      max-file-size: 200MB
+      max-request-size: 210MB
   flyway:
     enabled: true
   h2:
@@ -32,3 +39,6 @@ springdoc:
     operations-sorter: alpha
   api-docs:
     path: /v3/api-docs
+
+studio:
+  media-directory: ${MEDIA_DIRECTORY:./data/media}

@@ -11,7 +11,7 @@ import {
   MoveUpRight,
 } from "lucide-react";
 import { StudioData, Course, Take } from "./model";
-import { CourseCard, TakeRow, PageTitle } from "./UI";
+import { CourseCard, TakeRow, PageTitle, Empty } from "./UI";
 export default function Dashboard({
   data,
   openCourse,
@@ -29,7 +29,7 @@ export default function Dashboard({
   allCourses: () => void;
   allResults: () => void;
 }) {
-  const pending = data.takes.filter((t) => t.scores && !t.confirmed);
+  const pending = data.takes.filter((t) => !t.confirmed);
   const confirmed = data.takes.filter((t) => t.confirmed).length;
   return (
     <>
@@ -182,6 +182,17 @@ export default function Dashboard({
             <ArrowUpRight size={17} />
           </button>
         </div>
+        {!data.courses.length && (
+          <Empty
+            title="첫 수업을 만들어보세요"
+            description="수업을 만든 뒤 학생 명단을 표로 한 번에 등록할 수 있어요."
+            action={
+              <button className="primary-button" onClick={newCourse}>
+                <Plus size={16} />새 수업 만들기
+              </button>
+            }
+          />
+        )}
         <div className="course-grid">
           {data.courses.slice(0, 3).map((c) => (
             <CourseCard
@@ -202,6 +213,12 @@ export default function Dashboard({
               <ArrowUpRight size={16} />
             </button>
           </div>
+          {!data.takes.length && (
+            <Empty
+              title="아직 저장한 녹음이 없어요"
+              description="학생을 선택해 녹음하면 이곳에 평가 기록이 쌓여요."
+            />
+          )}
           {data.takes.slice(0, 4).map((t) => (
             <TakeRow
               key={t.id}
@@ -245,20 +262,17 @@ export default function Dashboard({
           </ol>
           <button
             className="guide-demo"
-            onClick={() => {
-              if (data.takes.find((t) => t.sample))
-                openTake(data.takes.find((t) => t.sample)!);
-            }}
+            onClick={data.courses.length ? allCourses : newCourse}
           >
             <Play size={15} />
-            평가 화면 둘러보기
+            평가 준비하기
             <MoveUpRight size={16} />
           </button>
         </section>
       </div>
       <p className="workspace-note">
-        표시된 예시 수업·평가는 사용 흐름을 위한 가상 자료입니다. 직접 만든
-        수업과 녹음은 이 브라우저에 보관됩니다.
+        수업과 학생 명단, 평가 기록은 계정별로 저장됩니다. 녹음 원본은 저장
+        버튼을 누르면 서버에 업로드됩니다.
       </p>
     </>
   );

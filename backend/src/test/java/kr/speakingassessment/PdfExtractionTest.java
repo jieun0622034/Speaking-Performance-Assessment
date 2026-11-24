@@ -7,6 +7,8 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.test.context.support.WithMockUser;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,7 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest @AutoConfigureMockMvc
+@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:environment;MODE=PostgreSQL;DB_CLOSE_DELAY=-1","studio.media-directory=${java.io.tmpdir}/speaking-environment-tests"}) @AutoConfigureMockMvc
+@WithMockUser
 class PdfExtractionTest {
     @Autowired MockMvc mvc;
     byte[] fixture(int pages, boolean text) throws Exception {
@@ -29,17 +32,17 @@ class PdfExtractionTest {
         }
     }
     @Test void extractsActualText() throws Exception {
-        mvc.perform(multipart("/api/files/extract-text").file(new MockMultipartFile("file","rubric.pdf","application/pdf",fixture(1,true))))
+        mvc.perform(multipart("/api/files/extract-text").file(new MockMultipartFile("file","rubric.pdf","application/pdf",fixture(1,true))).with(csrf()))
             .andExpect(status().isOk()).andExpect(jsonPath("$.text").value(org.hamcrest.Matchers.containsString("number name")))
             .andExpect(jsonPath("$.pages").value(1));
     }
     @Test void scannedOrEmptyPdfDoesNotPretendToHaveRecognizedText() throws Exception {
-        mvc.perform(multipart("/api/files/extract-text").file(new MockMultipartFile("file","scan.pdf","application/pdf",fixture(1,false))))
+        mvc.perform(multipart("/api/files/extract-text").file(new MockMultipartFile("file","scan.pdf","application/pdf",fixture(1,false))).with(csrf()))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PDF_EXTRACTION_FAILED"));
     }
     @Test void rejectsMalformedAndOversizedPageCount() throws Exception {
         for(byte[] bytes:new byte[][]{new byte[]{1,2,3},fixture(31,true)}) {
-            mvc.perform(multipart("/api/files/extract-text").file(new MockMultipartFile("file","invalid.pdf","application/pdf",bytes)))
+            mvc.perform(multipart("/api/files/extract-text").file(new MockMultipartFile("file","invalid.pdf","application/pdf",bytes)).with(csrf()))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").isString());
         }
     }

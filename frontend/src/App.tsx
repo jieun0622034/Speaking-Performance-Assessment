@@ -1,4 +1,2 @@
-import Studio from "./studio/Studio";
-export default function App() {
-  return <Studio />;
-}
+import AuthGate from './studio/AuthGate';
+export default function App(){return <AuthGate/>;}

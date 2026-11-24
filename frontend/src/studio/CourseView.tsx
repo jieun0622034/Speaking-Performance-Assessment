@@ -138,14 +138,14 @@ export default function CourseView({
               </select>
               <button className="secondary-button" onClick={roster}>
                 <FileUp size={16} />
-                명단 가져오기
+                명단 일괄 등록
               </button>
             </div>
           </div>
           {course.students.length === 0 ? (
             <Empty
               title="첫 학생을 등록해볼까요?"
-              description="학생 명단을 올리거나, 한 명씩 직접 입력할 수 있어요."
+              description="표에 여러 명을 입력하거나 엑셀 명단을 붙여넣어 한 번에 등록하세요."
               action={
                 <button className="primary-button" onClick={roster}>
                   <Plus size={16} />

@@ -26,7 +26,7 @@ export default function RecordView({
   courses: Course[];
   initialCourse?: string;
   initialStudent?: string;
-  onSave: (t: Take) => void;
+  onSave: (t: Take) => Promise<void>;
   onLock: (locked: boolean) => void;
   back: () => void;
 }) {
@@ -58,6 +58,10 @@ export default function RecordView({
     time = useRef({ start: 0, paused: 0, pauseStart: 0, duration: 0 }),
     guard = useRef(false);
   const file = useRef<HTMLInputElement>(null);
+  const uploadKey = useRef("");
+  useEffect(() => {
+    uploadKey.current = blob ? id() : "";
+  }, [blob]);
   function release() {
     if (timer.current) clearInterval(timer.current);
     stream.current?.getTracks().forEach((t) => t.stop());
@@ -239,7 +243,8 @@ export default function RecordView({
     setBusy(true);
     setError("");
     try {
-      const key = id();
+      const key = uploadKey.current || id();
+      uploadKey.current = key;
       await saveMedia(key, blob);
       const s = snapshot.current;
       const take: Take = {
@@ -256,7 +261,7 @@ export default function RecordView({
         createdAt: new Date().toISOString(),
         blobId: key,
       };
-      onSave(take);
+      await onSave(take);
       setBlob(null);
       onLock(false);
     } catch (e) {
@@ -497,7 +502,7 @@ export default function RecordView({
           </div>
           <p className="record-storage">
             <ShieldCheck size={14} />
-            원본은 현재 브라우저에 저장되며 외부에 자동 전송되지 않아요.
+            저장 버튼을 누르면 원본이 선생님 계정의 서버 저장소에 업로드돼요.
           </p>
         </section>
         <aside className="record-aside">

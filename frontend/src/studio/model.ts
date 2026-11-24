@@ -212,7 +212,7 @@ export async function audioDB(): Promise<IDBDatabase> {
       reject(new Error("브라우저 저장소를 열지 못했습니다."));
   });
 }
-export async function saveMedia(key: string, blob: Blob) {
+export async function saveLegacyMedia(key: string, blob: Blob) {
   const db = await audioDB();
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction("media", "readwrite");
@@ -229,7 +229,7 @@ export async function saveMedia(key: string, blob: Blob) {
     };
   });
 }
-export async function readMedia(key: string) {
+export async function readLegacyMedia(key: string) {
   const db = await audioDB();
   return new Promise<Blob | undefined>((resolve, reject) => {
     const tx = db.transaction("media");
@@ -276,3 +276,5 @@ export function exportResults(takes: Take[], courses: Course[]) {
     "말하기_평가결과.csv",
   );
 }
+
+export {saveServerMedia as saveMedia,readServerMedia as readMedia} from "./server";

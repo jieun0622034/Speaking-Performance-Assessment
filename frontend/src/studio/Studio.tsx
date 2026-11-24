@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useLayoutEffect, useState, useRef } from "react";
 import {
   Home,
   BookOpen,
@@ -39,21 +39,32 @@ import {
   Course,
   Student,
   Take,
-  loadData,
-  persist,
   exportResults,
   total,
   id,
 } from "./model";
 import "./studio.css";
+import { request, type TeacherAccount, type Workspace } from "./server";
 const navItems = [
   { id: "home", name: "홈", icon: Home },
   { id: "courses", name: "내 수업", icon: BookOpen },
   { id: "record", name: "녹음 스튜디오", icon: Mic },
   { id: "results", name: "평가 관리", icon: ClipboardCheck },
 ] as const;
-export default function Studio() {
-  const [data, setData] = useState(loadData),
+export default function Studio({
+  initialData,
+  initialRevision,
+  account,
+  onLogout,
+}: {
+  initialData: StudioData;
+  initialRevision: number;
+  account: TeacherAccount;
+  onLogout: () => Promise<void>;
+}) {
+  const revision = useRef(initialRevision),
+    saving = useRef(false);
+  const [data, setData] = useState(initialData),
     [page, setPage] = useState<Page | "review">("home"),
     [courseId, setCourseId] = useState(""),
     [studentId, setStudentId] = useState(""),
@@ -84,15 +95,28 @@ export default function Studio() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setMessage(""), 5000);
   }
-  function commit(next: StudioData) {
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [page, courseId, takeId]);
+  useEffect(() => {
+    const previous = history.scrollRestoration;
+    history.scrollRestoration = "manual";
+    return () => {
+      history.scrollRestoration = previous;
+    };
+  }, []);
+  async function commit(next: StudioData) {
+    if (saving.current)
+      throw new Error("저장 중입니다. 잠시 후 다시 시도해주세요.");
+    saving.current = true;
     try {
-      persist(next);
-      setData(next);
-    } catch {
-      toast(
-        "브라우저 저장 공간이 부족해요. 원본 파일을 내려받아 보관해주세요.",
-      );
-      throw new Error("브라우저 저장에 실패했습니다.");
+      const result = await request<Workspace>("/workspace", {
+        body: { revision: revision.current, data: next },
+      });
+      revision.current = result.revision;
+      setData(result.data);
+    } finally {
+      saving.current = false;
     }
   }
   function navigate(next: Page | "review") {
@@ -125,7 +149,7 @@ export default function Studio() {
   }
   const course = data.courses.find((c) => c.id === courseId),
     take = data.takes.find((t) => t.id === takeId),
-    pending = data.takes.filter((t) => t.scores && !t.confirmed);
+    pending = data.takes.filter((t) => !t.confirmed);
   const shownCourses = data.courses.filter((c) =>
     [c.name, c.classroom, c.grade, c.task]
       .join(" ")
@@ -257,8 +281,7 @@ export default function Studio() {
           </div>
           <div className="topbar-actions">
             <span className="preview-badge">
-              <span />
-              체험 공간
+              <span />내 워크스페이스
             </span>
             <button
               className="icon-button help-button"
@@ -414,8 +437,8 @@ export default function Studio() {
               initialStudent={studentId}
               back={() => navigate("courses")}
               onLock={setLocked}
-              onSave={(t) => {
-                commit({ ...data, takes: [t, ...data.takes] });
+              onSave={async (t) => {
+                await commit({ ...data, takes: [t, ...data.takes] });
                 setTakeId(t.id);
                 setCourseId(t.courseId);
                 setPage("review");
@@ -572,12 +595,17 @@ export default function Studio() {
                 <div>
                   <section className="panel profile-form">
                     <h2>기본 정보</h2>
+                    <p className="field-hint">{account.email}</p>
                     <form
                       className="studio-form"
-                      onSubmit={(e) => {
+                      onSubmit={async (e) => {
                         e.preventDefault();
-                        commit({ ...data, profile });
-                        toast("선생님 정보를 저장했어요.");
+                        try {
+                          await commit({ ...data, profile });
+                          toast("선생님 정보를 저장했어요.");
+                        } catch (error) {
+                          toast((error as Error).message);
+                        }
                       }}
                     >
                       <label>
@@ -624,15 +652,30 @@ export default function Studio() {
                   </section>
                   <section className="panel workspace-settings">
                     <h2>워크스페이스 안내</h2>
+                    <button
+                      className="secondary-button"
+                      disabled={locked}
+                      onClick={async () => {
+                        try {
+                          await onLogout();
+                        } catch (e) {
+                          toast((e as Error).message);
+                        }
+                      }}
+                    >
+                      <LogOut size={16} />
+                      로그아웃
+                    </button>
                     <div>
                       <span>
                         <ShieldCheck size={19} />
                       </span>
                       <div>
-                        <strong>현재 브라우저에 자료 보관</strong>
+                        <strong>계정별 서버에 자료 보관</strong>
                         <p>
-                          수업·명단·평가 내용과 녹음 원본은 이 브라우저에
-                          저장돼요. 브라우저 저장소를 지우면 자료도 삭제됩니다.
+                          수업·명단·평가 내용은 서버 DB에, 녹음 원본은 서버의
+                          비공개 파일 저장소에 보관해요. 담당 교사 계정으로만
+                          접근할 수 있어요.
                         </p>
                       </div>
                     </div>
@@ -647,8 +690,9 @@ export default function Studio() {
                             : "개발 서버 연결 확인 중"}
                         </strong>
                         <p>
-                          현재는 체험 공간입니다. 실제 서버 계정 인증·계정별 DB
-                          보관·AI 자동 평가는 별도 연동 단계입니다.
+                          계정 인증과 서버 저장이 연결됐어요. AI 자동 채점은
+                          아직 연결되지 않았으며, 직접 녹음한 자료의 점수와
+                          피드백은 교사가 입력해요.
                         </p>
                       </div>
                     </div>
@@ -693,8 +737,8 @@ export default function Studio() {
       {modal === "course" && (
         <CourseForm
           onClose={() => setModal(null)}
-          onSave={(c) => {
-            commit({ ...data, courses: [c, ...data.courses] });
+          onSave={async (c) => {
+            await commit({ ...data, courses: [c, ...data.courses] });
             setModal(null);
             openCourse(c);
             toast("새 수업을 만들었어요. 학생을 등록해보세요.");
@@ -705,8 +749,8 @@ export default function Studio() {
         <RosterForm
           course={course}
           onClose={() => setModal(null)}
-          onSave={(students) => {
-            commit({
+          onSave={async (students) => {
+            await commit({
               ...data,
               courses: data.courses.map((c) =>
                 c.id === course.id
@@ -728,8 +772,8 @@ export default function Studio() {
         <CriteriaForm
           course={course}
           onClose={() => setModal(null)}
-          onSave={(c) => {
-            commit({
+          onSave={async (c) => {
+            await commit({
               ...data,
               courses: data.courses.map((x) => (x.id === c.id ? c : x)),
             });
@@ -756,7 +800,7 @@ export default function Studio() {
               ],
               [
                 "학생의 목소리 기록하기",
-                "학생을 선택하고 음성 또는 영상+음성으로 녹음하세요. 직접 녹음한 원본은 현재 브라우저에 보관돼요.",
+                "학생을 선택하고 음성 또는 영상+음성으로 녹음하세요. 직접 녹음한 원본은 선생님 계정의 서버 저장소에 보관돼요.",
               ],
               [
                 "근거를 확인하고 확정하기",
