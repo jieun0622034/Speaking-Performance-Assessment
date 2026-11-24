@@ -297,6 +297,15 @@ export default function RecordView({
         title="한 학생의 목소리에 집중하는 시간"
         description="학생을 선택하고 편안하게 녹음을 시작하세요."
       />
+      {kind === "video" && (
+        <p className="video-assessment-note">
+          <strong>영상은 발표 장면을 함께 확인하는 기록이에요.</strong>
+          <br />
+          현재 영상 AI 자동 채점은 지원하지 않아요. 교사가 영상·음성을 재생하고
+          등록한 평가 기준에 따라 직접 점수를 입력합니다. 시각 자료 활용 등을
+          평가하려면 해당 항목과 배점을 기준에 명시해주세요.
+        </p>
+      )}
       <div className="record-layout">
         <section className="record-main panel">
           <div className="record-top">

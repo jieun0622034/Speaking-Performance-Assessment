@@ -20,6 +20,9 @@ export interface Course {
   prompt: string;
   rubric: string;
   criteria: Criterion[];
+  year?: number;
+  semester?: 1 | 2;
+  archivedAt?: string;
   sample?: boolean;
 }
 export interface Evidence {
@@ -56,12 +59,7 @@ export interface StudioData {
   takes: Take[];
 }
 export type Page =
-  | "home"
-  | "courses"
-  | "record"
-  | "results"
-  | "mypage"
-  | "course";
+  "history" | "home" | "courses" | "record" | "results" | "mypage" | "course";
 export const DATA_KEY = "speaking-studio-v1";
 export const id = () => crypto.randomUUID();
 export const defaultCriteria = (): Criterion[] => [
@@ -277,4 +275,7 @@ export function exportResults(takes: Take[], courses: Course[]) {
   );
 }
 
-export {saveServerMedia as saveMedia,readServerMedia as readMedia} from "./server";
+export {
+  saveServerMedia as saveMedia,
+  readServerMedia as readMedia,
+} from "./server";

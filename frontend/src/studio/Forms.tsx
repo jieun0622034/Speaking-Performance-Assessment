@@ -11,6 +11,12 @@ import {
 import { Course, Student, defaultCriteria, id, download } from "./model";
 import { Modal } from "./UI";
 import { request } from "./server";
+import {
+  assessmentFields,
+  currentTerm,
+  sameTerm,
+  termLabel,
+} from "./lifecycle";
 export function CourseForm({
   onClose,
   onSave,
@@ -18,7 +24,8 @@ export function CourseForm({
   onClose: () => void;
   onSave: (c: Course) => Promise<void>;
 }) {
-  const [name, setName] = useState(""),
+  const [term, setTerm] = useState(currentTerm),
+    [name, setName] = useState(""),
     [grade, setGrade] = useState("2학년"),
     [classroom, setClassroom] = useState("1반"),
     [color, setColor] = useState("mint"),
@@ -40,6 +47,7 @@ export function CourseForm({
           try {
             await onSave({
               id: id(),
+              ...term,
               name: name.trim(),
               grade,
               classroom: classroom.trim(),
@@ -57,6 +65,34 @@ export function CourseForm({
           }
         }}
       >
+        <div className="form-two">
+          <label>
+            학년도
+            <input
+              aria-label="학년도"
+              type="number"
+              required
+              min={2000}
+              max={2100}
+              value={term.year}
+              onChange={(e) =>
+                setTerm({ ...term, year: Number(e.target.value) })
+              }
+            />
+          </label>
+          <label>
+            학기
+            <select
+              value={term.semester}
+              onChange={(e) =>
+                setTerm({ ...term, semester: Number(e.target.value) as 1 | 2 })
+              }
+            >
+              <option value="1">1학기</option>
+              <option value="2">2학기</option>
+            </select>
+          </label>
+        </div>
         <label>
           수업 이름
           <input
@@ -130,13 +166,17 @@ export { RosterForm } from "./RosterGrid";
 
 export function CriteriaForm({
   course,
+  courses,
   onClose,
   onSave,
 }: {
   course: Course;
+  courses: Course[];
   onClose: () => void;
-  onSave: (c: Course) => Promise<void>;
+  onSave: (c: Course, targets: string[]) => Promise<void>;
 }) {
+  const [targets, setTargets] = useState<string[]>([course.id]);
+  const available = courses.filter((c) => !c.archivedAt);
   const [draft, setDraft] = useState(structuredClone(course)),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -150,7 +190,7 @@ export function CriteriaForm({
       const data = await request<{ text: string }>("/files/extract-text", {
         body: form,
       });
-      setDraft({ ...draft, rubric: data.text });
+      setDraft((previous) => ({ ...previous, rubric: data.text }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -184,7 +224,7 @@ export function CriteriaForm({
           setSaving(true);
           setError("");
           try {
-            await onSave(draft);
+            await onSave(draft, targets);
           } catch (e) {
             setError((e as Error).message);
           } finally {
@@ -192,6 +232,36 @@ export function CriteriaForm({
           }
         }}
       >
+        <section className="assessment-shortcut">
+          <h3>이미 만든 기준으로 시작하기</h3>
+          <label>
+            다른 수업의 평가 기준 가져오기
+            <select
+              defaultValue=""
+              disabled={saving}
+              onChange={(e) => {
+                const source = courses.find((c) => c.id === e.target.value);
+                if (source) setDraft({ ...draft, ...assessmentFields(source) });
+              }}
+            >
+              <option value="" disabled>
+                수업 선택 · 지난 학기 기준도 가져올 수 있어요
+              </option>
+              {courses
+                .filter((c) => c.id !== course.id)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {termLabel(c)} / {c.grade} {c.classroom} / {c.task}
+                    {c.archivedAt ? " (보관됨)" : ""}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <p className="field-hint">
+            과제·상세 기준·항목·배점을 함께 가져와 수정할 수 있어요. 학생 명단은
+            바뀌지 않아요.
+          </p>
+        </section>
         <label>
           평가 이름
           <input
@@ -327,6 +397,51 @@ export function CriteriaForm({
           저장한 기준은 다음 녹음부터 적용돼요. 이미 저장한 녹음의 평가 기준은
           유지됩니다.
         </p>
+        <section className="assessment-targets">
+          <div className="label-row">
+            <h3>같은 기준을 적용할 수업</h3>
+            <button
+              type="button"
+              className="text-button"
+              disabled={saving}
+              onClick={() =>
+                setTargets(
+                  available
+                    .filter(
+                      (c) => c.grade === course.grade && sameTerm(c, course),
+                    )
+                    .map((c) => c.id),
+                )
+              }
+            >
+              같은 학기·학년 모두 선택
+            </button>
+          </div>
+          <p className="field-hint">
+            선택한 수업의 다음 녹음부터 적용돼요. 기존 녹음의 기준·점수는
+            유지돼요.
+          </p>
+          {available.map((c) => (
+            <label className="consent-check" key={c.id}>
+              <input
+                type="checkbox"
+                disabled={saving || c.id === course.id}
+                checked={targets.includes(c.id)}
+                onChange={(e) =>
+                  setTargets((old) =>
+                    e.target.checked
+                      ? [...old, c.id]
+                      : old.filter((id) => id !== c.id),
+                  )
+                }
+              />
+              <span>
+                {c.grade} {c.classroom} · {c.name}
+                <small> {termLabel(c)}</small>
+              </span>
+            </label>
+          ))}
+        </section>
         {error && (
           <p role="alert" className="form-error">
             {error}
@@ -337,7 +452,7 @@ export function CriteriaForm({
             취소
           </button>
           <button disabled={busy || saving} className="primary-button">
-            평가 기준 저장
+            선택한 {targets.length}개 수업에 기준 저장
           </button>
         </div>
       </form>

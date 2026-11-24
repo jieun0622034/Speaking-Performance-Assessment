@@ -1,6 +1,9 @@
 import { useState } from "react";
 import {
   Mic,
+  Pencil,
+  Archive,
+  RotateCcw,
   Plus,
   Search,
   SlidersHorizontal,
@@ -12,6 +15,7 @@ import {
   Headphones,
 } from "lucide-react";
 import { Course, Take, Student, latestTake } from "./model";
+import { termLabel } from "./lifecycle";
 import { PageTitle, Status, Empty } from "./UI";
 export default function CourseView({
   course,
@@ -21,7 +25,13 @@ export default function CourseView({
   criteria,
   record,
   review,
+  editStudent,
+  archive,
+  restore,
 }: {
+  editStudent: (s: Student) => void;
+  archive: () => void;
+  restore: () => Promise<void>;
   course: Course;
   takes: Take[];
   back: () => void;
@@ -46,26 +56,57 @@ export default function CourseView({
   return (
     <>
       <button className="back-link" onClick={back}>
-        <ArrowLeft size={16} />내 수업
+        <ArrowLeft size={16} />
+        {course.archivedAt ? "학기 보관함" : "내 수업"}
       </button>
       <PageTitle
-        eyebrow={`${course.grade} ${course.classroom} · 영어`}
+        eyebrow={`${termLabel(course)} · ${course.grade} ${course.classroom}`}
         title={course.name}
         description={`${course.students.length}명의 학생과 함께하는 말하기 수업`}
         action={
-          <button className="primary-button" onClick={roster}>
-            <Plus size={17} />
-            학생 등록
-          </button>
+          course.archivedAt ? (
+            <button className="secondary-button" onClick={() => void restore()}>
+              <RotateCcw size={17} />내 수업으로 복원
+            </button>
+          ) : (
+            <div className="management-actions">
+              <button className="secondary-button" onClick={archive}>
+                <Archive size={16} />
+                수업 보관
+              </button>
+              <button
+                className="primary-button"
+                disabled={!!course.archivedAt}
+                onClick={roster}
+              >
+                <Plus size={17} />
+                학생 등록
+              </button>
+            </div>
+          )
         }
       />
+      {course.archivedAt && (
+        <div className="archive-explanation">
+          <Archive size={20} />
+          <p>
+            <strong>보관한 수업 · 조회 전용</strong>
+            <br />
+            학생 수정·새 녹음·평가 변경은 수업 복원 후 진행할 수 있어요.
+          </p>
+        </div>
+      )}
       <section className={"course-banner " + course.color}>
         <div>
           <span className="small-label">현재 진행 중인 말하기 평가</span>
           <h2>{course.task}</h2>
           <p>{course.prompt}</p>
         </div>
-        <button className="secondary-button" onClick={criteria}>
+        <button
+          className="secondary-button"
+          disabled={!!course.archivedAt}
+          onClick={criteria}
+        >
           <SlidersHorizontal size={16} />
           평가 설정
         </button>
@@ -90,7 +131,11 @@ export default function CourseView({
         <section className="panel criteria-read">
           <div className="panel-heading">
             <h2>선생님의 평가 기준</h2>
-            <button className="text-button" onClick={criteria}>
+            <button
+              className="text-button"
+              disabled={!!course.archivedAt}
+              onClick={criteria}
+            >
               기준 수정
             </button>
           </div>
@@ -136,7 +181,11 @@ export default function CourseView({
                 <option value="waiting">녹음 전</option>
                 <option value="review">검토 필요</option>
               </select>
-              <button className="secondary-button" onClick={roster}>
+              <button
+                className="secondary-button"
+                disabled={!!course.archivedAt}
+                onClick={roster}
+              >
                 <FileUp size={16} />
                 명단 일괄 등록
               </button>
@@ -147,7 +196,11 @@ export default function CourseView({
               title="첫 학생을 등록해볼까요?"
               description="표에 여러 명을 입력하거나 엑셀 명단을 붙여넣어 한 번에 등록하세요."
               action={
-                <button className="primary-button" onClick={roster}>
+                <button
+                  className="primary-button"
+                  disabled={!!course.archivedAt}
+                  onClick={roster}
+                >
                   <Plus size={16} />
                   학생 등록하기
                 </button>
@@ -185,6 +238,15 @@ export default function CourseView({
                               {s.name.replace(/\s/g, "").slice(-2)}
                             </span>
                             <strong>{s.name}</strong>
+                            {!course.archivedAt && (
+                              <button
+                                className="icon-button student-edit-button"
+                                aria-label={`${s.name} 학생 정보 수정`}
+                                onClick={() => editStudent(s)}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td>
@@ -221,6 +283,7 @@ export default function CourseView({
                               className={
                                 "small-button " + (!take ? "green-button" : "")
                               }
+                              disabled={!!course.archivedAt}
                               onClick={() => record(s)}
                             >
                               <Mic size={15} />

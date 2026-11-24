@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { X, Mic, Check, Clock3, Headphones, ChevronRight } from "lucide-react";
+import { termLabel } from "./lifecycle";
 import { Take, Course, total, clock, timeAgo } from "./model";
 export function Brand() {
   return (
@@ -111,7 +112,7 @@ export function CourseCard({
   return (
     <button className="course-card" onClick={onClick}>
       <div className={"course-card-top " + course.color}>
-        <span className="subject-label">ENGLISH CLASS</span>
+        <span className="subject-label">{termLabel(course)}</span>
         <span className="course-grade">
           {course.grade} {course.classroom}
         </span>

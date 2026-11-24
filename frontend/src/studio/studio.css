@@ -4910,3 +4910,226 @@ body,
     min-width: 310px;
   }
 }
+
+/* Term lifecycle and shared assessment preparation */
+.management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.student-edit-button {
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e0e9e3;
+  border-radius: 7px;
+  color: #5c7b6b;
+  margin-left: 5px;
+}
+.student-edit-button:hover {
+  background: #eaf3ed;
+}
+.archive-explanation,
+.video-assessment-note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: #eef4f0;
+  border: 1px solid #dce8df;
+  border-radius: 12px;
+  padding: 17px 20px;
+  margin: 0 0 22px;
+  font-size: 13px;
+  line-height: 1.85;
+  color: #607a6a;
+}
+.archive-explanation > svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.video-assessment-note {
+  display: block;
+  background: #f1f4f9;
+  border-color: #e0e6ef;
+  color: #61758c;
+}
+.archive-term-label {
+  font-size: 12px;
+  color: #7d9185;
+  margin: 0 0 10px;
+}
+.archive-course-list {
+  max-height: 250px;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+}
+.archive-course-list small {
+  display: block;
+  color: #92a094;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.assessment-shortcut {
+  background: #f4f7f4;
+  border: 1px solid #e1e9e2;
+  border-radius: 12px;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+.assessment-shortcut h3,
+.assessment-targets h3 {
+  font-size: 14px;
+  font-weight: 650;
+}
+.assessment-targets {
+  border-top: 1px solid #e5ece7;
+  padding-top: 20px;
+  display: grid;
+  gap: 12px;
+}
+.assessment-targets .consent-check {
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid #e7ede8;
+  border-radius: 8px;
+}
+.assessment-targets small {
+  color: #8d9e92;
+  font-size: 11px;
+}
+.assessment-targets .label-row {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.list-toolbar > select {
+  padding: 10px 13px;
+  background: #fff;
+  border: 1px solid #dfe8e1;
+  border-radius: 8px;
+  color: #54715f;
+}
+.archive-explanation p {
+  margin: 0;
+}
+@media (max-width: 560px) {
+  .management-actions {
+    gap: 6px;
+  }
+  .management-actions button {
+    font-size: 11px;
+    padding: 9px 10px;
+  }
+  .archive-explanation,
+  .video-assessment-note {
+    padding: 14px;
+    font-size: 12px;
+  }
+  .assessment-shortcut {
+    padding: 14px;
+  }
+  .assessment-targets .consent-check span {
+    font-size: 12px;
+  }
+  .assessment-targets small {
+    display: block;
+  }
+  .student-edit-button {
+    margin-left: 0;
+  }
+  .student-name {
+    gap: 5px;
+  }
+  .list-toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+/* Keep checkbox labels out of the form's stacked text-field layout. */
+.studio-form label.consent-check {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+.studio-form .consent-check input[type="checkbox"] {
+  appearance: auto;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+  padding: 0;
+  margin: 3px 0 0;
+  border-radius: 4px;
+  accent-color: #26745c;
+  box-shadow: none;
+}
+.studio-form .consent-check > span {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.archive-course-list {
+  gap: 9px;
+  max-height: 280px;
+}
+.archive-course-list label.consent-check {
+  padding: 14px 16px;
+  border: 1px solid #dfe8e1;
+  border-radius: 11px;
+  background: #fff;
+  margin: 0;
+  min-height: 74px;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.archive-course-list label.consent-check:has(input:checked) {
+  background: #edf5f0;
+  border-color: #79ab90;
+}
+.archive-course-list label.consent-check:hover {
+  border-color: #8eb5a0;
+}
+.term-semester-field {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.term-semester-field .field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #67806d;
+}
+.term-toggle {
+  display: flex;
+  gap: 5px;
+  border: 1px solid #dce6df;
+  background: #f4f7f4;
+  border-radius: 10px;
+  padding: 4px;
+  min-height: 46px;
+}
+.term-toggle button {
+  flex: 1;
+  border-radius: 7px;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8c9b90;
+}
+.term-toggle button.selected {
+  background: #fff;
+  color: #24694e;
+  box-shadow: 0 1px 4px #183e3315;
+  outline: 1px solid #dce8df;
+}
+.term-toggle button:focus-visible {
+  outline: 2px solid #5a9b7b;
+  outline-offset: 1px;
+}

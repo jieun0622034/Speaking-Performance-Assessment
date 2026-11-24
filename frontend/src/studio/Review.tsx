@@ -19,7 +19,9 @@ export default function Review({
   back,
   onSave,
   toast,
+  readOnly = false,
 }: {
+  readOnly?: boolean;
   take: Take;
   course?: Course;
   back: () => void;
@@ -60,7 +62,7 @@ export default function Review({
     };
   }, [take.id]);
   async function save(confirmed: boolean) {
-    if (saving) return;
+    if (saving || readOnly) return;
     setError("");
     const result: Record<string, number> = {};
     for (const c of take.criteria) {
@@ -120,7 +122,7 @@ export default function Review({
     <>
       <button className="back-link" onClick={back}>
         <ArrowLeft size={16} />
-        평가 목록
+        {readOnly ? "보관한 수업" : "평가 목록"}
       </button>
       <PageTitle
         eyebrow={`${course?.grade || ""} ${course?.classroom || ""} · ${take.studentNumber}번`}
@@ -128,6 +130,21 @@ export default function Review({
         description={take.task}
         action={<Status take={take} />}
       />
+      {readOnly && (
+        <p className="archive-explanation">
+          보관한 수업의 평가입니다. 점수와 피드백을 수정하려면 수업을 먼저
+          복원해주세요.
+        </p>
+      )}
+      {take.kind === "video" && (
+        <p className="video-assessment-note">
+          <strong>영상의 평가 반영 방식</strong>
+          <br />
+          영상과 음성을 재생하며 교사가 등록한 항목에 따라 직접 채점해요. 영상
+          AI 분석은 연결되지 않았으며 촬영만으로 점수가 추가되거나 감점되지
+          않아요.
+        </p>
+      )}
       {take.sample && (
         <div className="sample-notice">
           <Info size={17} />
@@ -332,6 +349,7 @@ export default function Review({
                 <div>
                   <input
                     aria-label={c.name + " 점수"}
+                    disabled={readOnly}
                     type="number"
                     min="0"
                     max={c.max}
@@ -357,6 +375,7 @@ export default function Review({
           <label className="feedback-label">
             학생에게 전할 피드백
             <textarea
+              disabled={readOnly}
               rows={5}
               value={feedback}
               maxLength={6000}
@@ -382,7 +401,7 @@ export default function Review({
           )}
           <button
             className="primary-button full"
-            disabled={saving}
+            disabled={saving || readOnly}
             onClick={() => void save(true)}
           >
             <CheckCheck size={18} />
@@ -390,7 +409,7 @@ export default function Review({
           </button>
           <button
             className="secondary-button full"
-            disabled={saving}
+            disabled={saving || readOnly}
             onClick={() => void save(false)}
           >
             검토 내용 저장
@@ -445,7 +464,7 @@ export default function Review({
             </button>
             <button
               className="primary-button"
-              disabled={saving}
+              disabled={saving || readOnly}
               onClick={() => void save(true)}
             >
               <Check size={17} />

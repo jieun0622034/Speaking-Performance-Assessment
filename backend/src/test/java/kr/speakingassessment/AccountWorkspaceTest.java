@@ -268,6 +268,68 @@ class AccountWorkspaceTest {
   }
 
   @Test
+  void archivesAreReadOnlyUntilRestoredAndStudentCorrectionsPersist() throws Exception {
+    Client c = signup();
+    ObjectNode payload = populated(c);
+    mvc.perform(
+            post("/api/workspace")
+                .session(c.session)
+                .header("X-CSRF-TOKEN", c.token)
+                .contentType("application/json")
+                .content(payload.toString()))
+        .andExpect(status().isOk());
+    payload = (ObjectNode) workspace(c);
+    ObjectNode course = (ObjectNode) payload.path("data").path("courses").get(0);
+    ((ObjectNode) course.path("students").get(0)).put("name", "수정된 학생").put("number", 31);
+    course.put("year", 2026).put("semester", 2);
+    mvc.perform(
+            post("/api/workspace")
+                .session(c.session)
+                .header("X-CSRF-TOKEN", c.token)
+                .contentType("application/json")
+                .content(payload.toString()))
+        .andExpect(status().isOk());
+    payload = (ObjectNode) workspace(c);
+    course = (ObjectNode) payload.path("data").path("courses").get(0);
+    course.put("archivedAt", java.time.Instant.now().toString());
+    mvc.perform(
+            post("/api/workspace")
+                .session(c.session)
+                .header("X-CSRF-TOKEN", c.token)
+                .contentType("application/json")
+                .content(payload.toString()))
+        .andExpect(status().isOk());
+    payload = (ObjectNode) workspace(c);
+    ObjectNode invalid = payload.deepCopy();
+    ((ObjectNode) invalid.path("data").path("courses").get(0)).put("task", "cannot edit");
+    mvc.perform(
+            post("/api/workspace")
+                .session(c.session)
+                .header("X-CSRF-TOKEN", c.token)
+                .contentType("application/json")
+                .content(invalid.toString()))
+        .andExpect(status().isBadRequest());
+    ((ObjectNode) payload.path("data").path("courses").get(0)).remove("archivedAt");
+    mvc.perform(
+            post("/api/workspace")
+                .session(c.session)
+                .header("X-CSRF-TOKEN", c.token)
+                .contentType("application/json")
+                .content(payload.toString()))
+        .andExpect(status().isOk());
+    assertEquals(
+        "수정된 학생",
+        workspace(c)
+            .path("data")
+            .path("courses")
+            .get(0)
+            .path("students")
+            .get(0)
+            .path("name")
+            .asText());
+  }
+
+  @Test
   void logsOutAndReauthenticatesWithARealSession() throws Exception {
     Client c = signup();
     mvc.perform(post("/api/auth/logout").session(c.session).header("X-CSRF-TOKEN", c.token))

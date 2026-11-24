@@ -81,6 +81,24 @@ public class WorkspaceService {
     Set<String> allStudents = new HashSet<>();
     for (JsonNode c : courses) {
       String cid = identifier(c, "id");
+      if (c.has("year") || c.has("semester")) {
+        check(
+            c.path("year").isIntegralNumber()
+                && c.path("year").asInt() >= 2000
+                && c.path("year").asInt() <= 2100
+                && c.path("semester").isIntegralNumber()
+                && (c.path("semester").asInt() == 1 || c.path("semester").asInt() == 2),
+            "학년도와 학기를 확인해주세요.");
+      }
+      if (c.hasNonNull("archivedAt")) {
+        check(c.has("year") && c.has("semester"), "보관할 학기를 지정해주세요.");
+        try {
+          Instant.parse(c.path("archivedAt").asText());
+        } catch (Exception e) {
+          throw new IllegalArgumentException("보관 일시가 올바르지 않습니다.");
+        }
+      }
+
       check(!memberships.containsKey(cid), "수업 식별자가 중복됩니다.");
       check(!c.path("sample").asBoolean(), "예시 수업은 운영 자료로 저장하지 않습니다.");
       AccountService.text(c, "name", 60, true);
@@ -154,6 +172,51 @@ public class WorkspaceService {
     }
   }
 
+  private void protectArchives(JsonNode previous, JsonNode next) {
+    Map<String, JsonNode> oldCourses = new HashMap<>(),
+        newCourses = new HashMap<>(),
+        oldTakes = new HashMap<>(),
+        newTakes = new HashMap<>();
+    previous.path("courses").forEach(c -> oldCourses.put(c.path("id").asText(), c));
+    next.path("courses").forEach(c -> newCourses.put(c.path("id").asText(), c));
+    previous.path("takes").forEach(t -> oldTakes.put(t.path("id").asText(), t));
+    next.path("takes").forEach(t -> newTakes.put(t.path("id").asText(), t));
+    for (var entry : newCourses.entrySet()) {
+      JsonNode old = oldCourses.get(entry.getKey()), updated = entry.getValue();
+      if (old != null && old.has("year") && updated.hasNonNull("archivedAt"))
+        check(
+            old.path("year").equals(updated.path("year"))
+                && old.path("semester").equals(updated.path("semester")),
+            "수업에 등록된 학기로만 보관할 수 있습니다.");
+    }
+    for (var entry : oldCourses.entrySet())
+      if (entry.getValue().hasNonNull("archivedAt")) {
+        JsonNode updated = newCourses.get(entry.getKey());
+        check(updated != null, "보관한 수업은 먼저 복원해주세요.");
+        if (updated.hasNonNull("archivedAt"))
+          check(updated.equals(entry.getValue()), "보관한 수업은 먼저 복원한 뒤 수정해주세요.");
+        else {
+          var original = entry.getValue().deepCopy();
+          ((com.fasterxml.jackson.databind.node.ObjectNode) original).remove("archivedAt");
+          check(original.equals(updated), "복원과 자료 수정은 순서대로 진행해주세요.");
+        }
+      }
+    for (var entry : oldTakes.entrySet()) {
+      String cid = entry.getValue().path("courseId").asText();
+      JsonNode oldCourse = oldCourses.get(cid), newCourse = newCourses.get(cid);
+      if ((oldCourse != null && oldCourse.hasNonNull("archivedAt"))
+          || (newCourse != null && newCourse.hasNonNull("archivedAt")))
+        check(
+            entry.getValue().equals(newTakes.get(entry.getKey())),
+            "보관한 평가 기록은 먼저 수업을 복원한 뒤 수정해주세요.");
+    }
+    for (var entry : newTakes.entrySet()) {
+      JsonNode c = newCourses.get(entry.getValue().path("courseId").asText());
+      if (c != null && c.hasNonNull("archivedAt"))
+        check(oldTakes.containsKey(entry.getKey()), "보관한 수업에는 새 녹음을 추가할 수 없습니다.");
+    }
+  }
+
   @Transactional
   public Map<String, Object> save(String owner, JsonNode payload) {
     JsonNode data = payload.path("data");
@@ -161,6 +224,7 @@ public class WorkspaceService {
     check(payload.path("revision").isIntegralNumber() && revision >= 0, "저장 버전을 확인해주세요.");
     check(data.toString().length() <= 5_000_000, "저장할 자료가 너무 큽니다.");
     validate(owner, data);
+    protectArchives((JsonNode) get(owner).get("data"), data);
     int changed =
         jdbc.update(
             "UPDATE studio_workspaces SET data=?,revision=revision+1,updated_at=? WHERE owner_id=?"

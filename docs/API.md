@@ -25,6 +25,14 @@ POST `/workspace` ← 동일한 구조. 성공 시 revision이 1 증가한 전�
 - 확정 평가는 모든 항목의 범위 내 점수와 비어 있지 않은 피드백이 필요합니다.
 - 성공할 때만 전체 자료를 저장합니다. 400이면 수정 없이 종료, 409 `REVISION_CONFLICT`이면 최신 자료를 다시 불러와야 합니다. 프런트는 자동 덮어쓰기하지 않습니다.
 
+## 학기·명단 변경
+
+`Course`에 선택적 `year`(2000~2100 정수), `semester`(1 또는 2), `archivedAt`(ISO instant)가 추가됐습니다. 이전 자료는 학기 속성 없이도 조회·저장할 수 있으며 보관 시에는 학기를 지정해야 합니다. 전체 workspace CAS 요청에서 여러 수업의 archivedAt을 설정하면 원자적으로 보관됩니다. 기존에 지정된 year/semester를 보관과 함께 다른 기간으로 바꾸면 거절됩니다. 학기가 미지정된 기존 수업만 보관 시 기간을 지정할 수 있습니다.
+
+보관한 수업과 연결 평가의 수정·누락·새 녹음 추가는 400으로 거절됩니다. 복원 요청은 해당 수업의 archivedAt만 제거해야 하며 자료 수정은 복원 성공 후 다음 요청에서 수행합니다. 자동 폐기는 없습니다.
+
+학생의 ID를 유지한 채 이름·번호를 수정합니다. 웹앱은 연결된 Take의 studentName/studentNumber도 함께 변경하며 원본 참조·점수·criteria 스냅샷은 유지합니다. 동일 학급 중복 번호 검증은 기존과 같습니다. 공통 기준은 선택한 수업의 task/prompt/rubric/criteria만 한 요청에서 변경하며 이미 존재하는 Take는 수정하지 않습니다.
+
 ## 원본
 
 POST `/media/{key}`: multipart `file`. audio/webm, audio/mp4, audio/wav, audio/mpeg, audio/ogg, video/webm, video/mp4 지원. Content-Type의 codec 파라미터는 제거해 기록합니다. key는 영문·숫자·밑줄·하이픈 1~80자. 파일 200MB 이하·계정 한도 1GB. 응답 `{id,saved:true}`.

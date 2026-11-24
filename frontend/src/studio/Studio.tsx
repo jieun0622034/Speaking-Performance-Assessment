@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useRef } from "react";
 import {
   Home,
+  Archive,
   BookOpen,
   Mic,
   ClipboardCheck,
@@ -44,12 +45,20 @@ import {
   id,
 } from "./model";
 import "./studio.css";
+import { StudentEditor, ArchiveForm, TermHistory } from "./Management";
+import {
+  applyAssessment,
+  archiveCourses,
+  termLabel,
+  updateStudent,
+} from "./lifecycle";
 import { request, type TeacherAccount, type Workspace } from "./server";
 const navItems = [
   { id: "home", name: "홈", icon: Home },
   { id: "courses", name: "내 수업", icon: BookOpen },
   { id: "record", name: "녹음 스튜디오", icon: Mic },
   { id: "results", name: "평가 관리", icon: ClipboardCheck },
+  { id: "history", name: "학기 보관함", icon: Archive },
 ] as const;
 export default function Studio({
   initialData,
@@ -70,7 +79,7 @@ export default function Studio({
     [studentId, setStudentId] = useState(""),
     [takeId, setTakeId] = useState(""),
     [modal, setModal] = useState<
-      null | "course" | "roster" | "criteria" | "guide"
+      null | "course" | "roster" | "criteria" | "guide" | "archive"
     >(null),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
@@ -80,6 +89,15 @@ export default function Studio({
     [message, setMessage] = useState(""),
     [profile, setProfile] = useState(data.profile),
     [backend, setBackend] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const activeCourses = data.courses.filter((c) => !c.archivedAt);
+  const activeData = {
+    ...data,
+    courses: activeCourses,
+    takes: data.takes.filter((t) =>
+      activeCourses.some((c) => c.id === t.courseId),
+    ),
+  };
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     fetch("/api/health")
@@ -142,21 +160,23 @@ export default function Studio({
     navigate("review");
   }
   function start(c?: Course, s?: Student) {
-    if (locked) return;
-    setCourseId(c?.id || data.courses.find((c) => c.students.length)?.id || "");
+    if (locked || c?.archivedAt) return;
+    setCourseId(
+      c?.id || activeCourses.find((c) => c.students.length)?.id || "",
+    );
     setStudentId(s?.id || "");
     navigate("record");
   }
   const course = data.courses.find((c) => c.id === courseId),
     take = data.takes.find((t) => t.id === takeId),
-    pending = data.takes.filter((t) => !t.confirmed);
-  const shownCourses = data.courses.filter((c) =>
+    pending = activeData.takes.filter((t) => !t.confirmed);
+  const shownCourses = activeCourses.filter((c) =>
     [c.name, c.classroom, c.grade, c.task]
       .join(" ")
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
-  const results = data.takes.filter(
+  const results = activeData.takes.filter(
     (t) =>
       (filter === "all" ||
         (filter === "review" && t.scores && !t.confirmed) ||
@@ -172,7 +192,13 @@ export default function Studio({
         .includes(search.toLowerCase()),
   );
   const activeNav =
-    page === "course" ? "courses" : page === "review" ? "results" : page;
+    page === "course"
+      ? course?.archivedAt
+        ? "history"
+        : "courses"
+      : page === "review"
+        ? "results"
+        : page;
   return (
     <div className="speaking-app">
       <aside className={"studio-sidebar " + (mobile ? "mobile-open" : "")}>
@@ -183,7 +209,7 @@ export default function Studio({
           <span className="workspace-avatar">S</span>
           <div>
             <strong>선생님의 워크스페이스</strong>
-            <span>2026학년도 · 2학기</span>
+            <span>학기별 수업 관리</span>
           </div>
         </div>
         <div className="nav-section-label">TEACHING</div>
@@ -209,7 +235,7 @@ export default function Studio({
           </button>
         </div>
         <div className="sidebar-courses">
-          {data.courses.slice(0, 4).map((c) => (
+          {activeCourses.slice(0, 4).map((c) => (
             <button key={c.id} onClick={() => openCourse(c)}>
               <i className={c.color} />
               <span>
@@ -338,7 +364,7 @@ export default function Studio({
         >
           {page === "home" && (
             <Dashboard
-              data={data}
+              data={activeData}
               openCourse={openCourse}
               openTake={openTake}
               newCourse={() => setModal("course")}
@@ -368,8 +394,16 @@ export default function Studio({
               />
               <div className="list-toolbar">
                 <span className="count-heading">
-                  전체 수업 <strong>{data.courses.length}</strong>
+                  전체 수업 <strong>{activeCourses.length}</strong>
                 </span>
+                <button
+                  className="secondary-button"
+                  disabled={!activeCourses.length}
+                  onClick={() => setModal("archive")}
+                >
+                  <Archive size={16} />
+                  학기 마감
+                </button>
                 <label className="search-box">
                   <Search size={17} />
                   <input
@@ -417,12 +451,35 @@ export default function Studio({
               )}
             </>
           )}
+          {page === "history" && (
+            <TermHistory
+              courses={data.courses}
+              takes={data.takes}
+              openCourse={openCourse}
+              onArchive={() => setModal("archive")}
+            />
+          )}
           {page === "course" && course && (
             <CourseView
               key={course.id}
               course={course}
               takes={data.takes}
-              back={() => navigate("courses")}
+              back={() => navigate(course.archivedAt ? "history" : "courses")}
+              editStudent={setEditingStudent}
+              archive={() => setModal("archive")}
+              restore={async () => {
+                try {
+                  await commit({
+                    ...data,
+                    courses: data.courses.map((c) =>
+                      c.id === course.id ? { ...c, archivedAt: undefined } : c,
+                    ),
+                  });
+                  toast("수업을 내 수업으로 복원했어요.");
+                } catch (e) {
+                  toast((e as Error).message);
+                }
+              }}
               roster={() => setModal("roster")}
               criteria={() => setModal("criteria")}
               record={(s) => start(course, s)}
@@ -432,7 +489,7 @@ export default function Studio({
           {page === "record" && (
             <RecordView
               key={courseId + "-" + studentId}
-              courses={data.courses}
+              courses={activeCourses}
               initialCourse={courseId}
               initialStudent={studentId}
               back={() => navigate("courses")}
@@ -549,8 +606,13 @@ export default function Studio({
               key={take.id}
               take={take}
               course={data.courses.find((c) => c.id === take.courseId)}
-              back={() => navigate("results")}
+              back={() =>
+                course?.archivedAt ? openCourse(course) : navigate("results")
+              }
               toast={toast}
+              readOnly={
+                !!data.courses.find((c) => c.id === take.courseId)?.archivedAt
+              }
               onSave={(t) =>
                 commit({
                   ...data,
@@ -652,6 +714,13 @@ export default function Studio({
                   </section>
                   <section className="panel workspace-settings">
                     <h2>워크스페이스 안내</h2>
+                    <button
+                      className="secondary-button"
+                      onClick={() => navigate("history")}
+                    >
+                      <Archive size={16} />
+                      학기 보관함
+                    </button>
                     <button
                       className="secondary-button"
                       disabled={locked}
@@ -771,14 +840,37 @@ export default function Studio({
       {modal === "criteria" && course && (
         <CriteriaForm
           course={course}
+          courses={data.courses}
           onClose={() => setModal(null)}
-          onSave={async (c) => {
-            await commit({
-              ...data,
-              courses: data.courses.map((x) => (x.id === c.id ? c : x)),
-            });
+          onSave={async (c, targets) => {
+            await commit(applyAssessment(data, c, targets));
             setModal(null);
-            toast("말하기 평가 기준을 저장했어요.");
+            toast(`${targets.length}개 수업에 같은 평가 기준을 저장했어요.`);
+          }}
+        />
+      )}
+      {editingStudent && course && (
+        <StudentEditor
+          student={editingStudent}
+          course={course}
+          onClose={() => setEditingStudent(null)}
+          onSave={async (student) => {
+            await commit(updateStudent(data, course.id, student));
+            setEditingStudent(null);
+            toast("학생 정보와 기존 평가의 이름·번호를 수정했어요.");
+          }}
+        />
+      )}
+      {modal === "archive" && (
+        <ArchiveForm
+          courses={data.courses}
+          initialCourse={page === "course" ? course : undefined}
+          onClose={() => setModal(null)}
+          onSave={async (ids, term) => {
+            await commit(archiveCourses(data, ids, term));
+            setModal(null);
+            navigate("history");
+            toast(`${ids.length}개 수업을 학기 보관함으로 옮겼어요.`);
           }}
         />
       )}
