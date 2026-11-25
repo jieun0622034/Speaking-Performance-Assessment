@@ -28,14 +28,35 @@ export class ServerError extends Error {
   }
 }
 export async function session(): Promise<Session> {
-  const res = await fetch("/api/auth/status", {
-    cache: "no-store",
-    credentials: "same-origin",
-  });
-  if (!res.ok) throw new Error("서버에 연결하지 못했습니다.");
+  let res: Response;
+  try {
+    res = await fetch("/api/auth/status", {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+  } catch {
+    throw new Error(
+      "서버에 연결하지 못했습니다. 서버가 실행된 뒤 다시 시도해주세요.",
+    );
+  }
+  if (!res.ok)
+    throw new Error("서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.");
   const data = await res.json();
+  if (typeof data.csrfToken !== "string" || !data.csrfToken)
+    throw new Error("로그인 연결을 준비하지 못했습니다. 다시 연결해주세요.");
   csrf = data.csrfToken;
   return data;
+}
+// The frontend can be ready before Spring Boot has finished starting.
+export async function connectSession(): Promise<Session> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await session();
+    } catch (error) {
+      if (attempt >= 3) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+    }
+  }
 }
 export async function request<T>(
   path: string,
@@ -96,6 +117,8 @@ export async function authenticate(
   mode: "login" | "signup",
   body: { email: string; password: string; name?: string; school?: string },
 ) {
+  // Refresh the session token after a server restart before sending credentials.
+  await session();
   await request("/auth/" + mode, { body });
   return session();
 }

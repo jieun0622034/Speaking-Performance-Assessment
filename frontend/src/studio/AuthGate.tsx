@@ -9,6 +9,7 @@ import {
 import { Brand, Modal } from "./UI";
 import {
   session,
+  connectSession,
   request,
   authenticate,
   bindOwner,
@@ -196,7 +197,7 @@ export default function AuthGate() {
     [renew, setRenew] = useState(false);
   useEffect(() => {
     let alive = true;
-    void session()
+    void connectSession()
       .then(async (s) => {
         if (s.authenticated) bindOwner(s.user.id);
         const w = s.authenticated
